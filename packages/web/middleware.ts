@@ -1,41 +1,23 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
-const isApiRoute = createRouteMatcher(["/api(.*)"]);
+const isApiRoute = (req: NextRequest) => {
+  return req.nextUrl.pathname.startsWith("/api");
+};
 
-const isPublicRoute = createRouteMatcher([
-  "/api(.*)",
-  "/sign-in(.*)",
-  "/webhook(.*)",
-  "/top-up-success",
-  "/top-up-cancelled",
-]);
-
-const isClerkProtectedRoute = createRouteMatcher(["/(.*)"]);
-
-const userManagementMiddleware = () =>
-  clerkMiddleware(async (auth, req) => {
-    console.log("userManagementMiddleware");
-
-    if (isPublicRoute(req)) {
-      console.log("isPublicRoute");
-      return NextResponse.next();
-    }
-    if (isClerkProtectedRoute(req)) {
-      console.log("isClerkProtectedRoute");
-      const { userId } = await auth();
-      console.log("userId", userId);
-      if (!userId) {
-        // (await auth()).redirectToSignIn();
-      }
-    }
-    return NextResponse.next();
-  });
+const isPublicRoute = (req: NextRequest) => {
+  const path = req.nextUrl.pathname;
+  return (
+    path.startsWith("/api") ||
+    path.startsWith("/sign-in") ||
+    path.startsWith("/webhook") ||
+    path === "/top-up-success" ||
+    path === "/top-up-cancelled"
+  );
+};
 
 const soloApiKeyMiddleware = (req: NextRequest) => {
   if (isApiRoute(req)) {
     const header = req.headers.get("authorization");
-    console.log("header", header);
     if (!header) {
       return new Response("No Authorization header", { status: 401 });
     }
@@ -47,25 +29,18 @@ const soloApiKeyMiddleware = (req: NextRequest) => {
   return NextResponse.next();
 };
 
-export default async function middleware(
-  req: NextRequest,
-  event: NextFetchEvent
-) {
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
   const res = NextResponse.next();
 
-  // Allow all origins
+  // Handle CORS preflight
   res.headers.set("Access-Control-Allow-Origin", "*");
   res.headers.set(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, OPTIONS"
   );
-  res.headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
-    // Handle preflight requests
     return new NextResponse(null, {
       status: 204,
       headers: {
@@ -77,15 +52,11 @@ export default async function middleware(
     });
   }
 
-  const enableUserManagement = process.env.ENABLE_USER_MANAGEMENT === "true";
-
   const isSoloInstance =
     process.env.SOLO_API_KEY && process.env.SOLO_API_KEY.length > 0;
 
-  if (enableUserManagement) {
-    console.log("enableUserManagement", req.url);
-    return userManagementMiddleware()(req, event);
-  } else if (isSoloInstance) {
+  // Only run API Key auth if Clerk is not enabled
+  if (isSoloInstance && !isPublicRoute(req)) {
     return soloApiKeyMiddleware(req);
   }
 
