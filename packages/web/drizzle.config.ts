@@ -12,11 +12,11 @@ export default defineConfig({
     // user: process.env.POSTGRES_USER,
     // password: process.env.POSTGRES_PASSWORD,
     // database: process.env.POSTGRES_DATABASE,
-    host: process.env.POSTGRES_HOST,
+    host: "db.uityjashzcxhlvitislw.supabase.co",
     port: 6543,
-    user: process.env.POSTGRES_USER,
-    password: process.env.POSTGRES_PASSWORD,
-    database: process.env.POSTGRES_DATABASE,
+    user: "postgres",
+    password: "XmBiPBx3hqIIgCs7",
+    database: "postgres",
     ssl: {
       rejectUnauthorized: false
     }
