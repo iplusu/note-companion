@@ -5,14 +5,15 @@ const projectDir = process.cwd();
 loadEnvConfig(projectDir);
 
 export default defineConfig({
-  schema: "./drizzle/schema.ts", // 사용자님의 경로를 따릅니다
+  schema: "./drizzle/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    host: process.env.POSTGRES_HOST!,
-    port: 6543,
-    user: process.env.POSTGRES_USER!,
-    password: process.env.POSTGRES_PASSWORD!,
-    database: process.env.POSTGRES_DATABASE!,
+    // Vercel + Supabase 연동에 최적화된
+    // "커넥션 풀러" URL을 직접 사용합니다.
+    url: process.env.POSTGRES_PRISMA_URL!,
+
+    // "셀프 서명 인증서" 오류를 방지하기 위해
+    // 이 SSL 설정은 반드시 필요합니다.
     ssl: {
       rejectUnauthorized: false
     }
