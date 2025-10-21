@@ -1,21 +1,33 @@
 import { defineConfig } from "drizzle-kit";
 import { loadEnvConfig } from "@next/env";
+import { URL } from "url"; // URL을 분해하기 위해 import 합니다.
 
 const projectDir = process.cwd();
 loadEnvConfig(projectDir);
+
+// Vercel이 제공하는 커넥션 풀러 URL을 가져옵니다.
+const poolerUrl = process.env.POSTGRES_PRISMA_URL;
+
+if (!poolerUrl) {
+  throw new Error("POSTGRES_PRISMA_URL environment variable is not set.");
+}
+
+// URL을 각 구성요소(host, user, password 등)로 분해합니다.
+const parsedUrl = new URL(poolerUrl);
 
 export default defineConfig({
   schema: "./drizzle/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    // Vercel + Supabase 연동에 최적화된
-    // "커넥션 풀러" URL을 직접 사용합니다.
-    url: process.env.POSTGRES_PRISMA_URL!,
+    host: parsedUrl.hostname,
+    port: parseInt(parsedUrl.port || "6543"),
+    user: parsedUrl.username,
+    password: parsedUrl.password,
+    database: parsedUrl.pathname.split("/")[1] || "postgres",
 
-    // "셀프 서명 인증서" 오류를 방지하기 위해
-    // 이 SSL 설정은 반드시 필요합니다.
+    // SSL 오류를 해결하기 위한 핵심 설정
     ssl: {
-      rejectUnauthorized: false
-    }
+      rejectUnauthorized: false,
+    },
   },
 });
